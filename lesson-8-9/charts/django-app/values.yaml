@@ -1,0 +1,27 @@
+replicaCount: 2
+
+image:
+  repository: 070938122390.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-django-ecr
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8000
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+env:
+  DJANGO_DEBUG: "False"
+  DJANGO_SECRET_KEY: "change-me"
+  DJANGO_SETTINGS_MODULE: "myproject.settings"
+
+  DATABASE_HOST: "postgres"
+  DATABASE_NAME: "postgres"
+  DATABASE_USER: "postgres"
+  DATABASE_PASSWORD: "postgres"
