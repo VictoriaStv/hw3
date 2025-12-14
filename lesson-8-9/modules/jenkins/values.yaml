@@ -1,0 +1,20 @@
+controller:
+  adminUser: "admin"
+  adminPassword: "admin"  # тільки для навчання, в бою так не робимо :)
+  serviceType: "LoadBalancer"
+  javaOpts: "-Djenkins.install.runSetupWizard=false"
+
+  installPlugins:
+    - kubernetes:latest
+    - workflow-aggregator:latest
+    - git:latest
+    - configuration-as-code:latest
+
+persistence:
+  enabled: true
+  size: 8Gi
+
+agent:
+  enabled: true
+  image: "jenkins/inbound-agent"
+  tag: "latest"

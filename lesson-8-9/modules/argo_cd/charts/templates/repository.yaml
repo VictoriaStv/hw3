@@ -1,0 +1,8 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Repository
+metadata:
+  name: hw3-repo
+  namespace: argocd
+spec:
+  url: https://github.com/VictoriaStv/hw3.git
+  type: git

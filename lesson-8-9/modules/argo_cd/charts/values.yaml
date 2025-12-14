@@ -1,0 +1,7 @@
+applications:
+  - name: django-app
+    namespace: default
+    project: default
+    repoURL: "https://github.com/VictoriaStv/hw3.git"
+    targetRevision: "lesson-8-9"
+    path: "lesson-8-9/charts/django-app"
