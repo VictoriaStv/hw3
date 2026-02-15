@@ -125,3 +125,110 @@ terraform destroy
 
 При terraform destroy також видаляється S3-бакет і DynamoDB-таблиця зі стейтом.  
 Якщо потім потрібно підняти інфраструктуру знову — бекенд потрібно налаштувати повторно.
+
+---
+
+## CI/CD (Jenkins + Argo CD)
+
+### Jenkins pipeline
+
+У репозиторії в каталозі `Project/Django` є файл `Jenkinsfile`, який виконує:
+
+1. **Checkout коду** з GitHub.
+2. **Збірку Docker-образу** Django-застосунку:
+   - директорія: `Project/Django`
+   - образ пушиться в **ECR**: `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/django-app:latest`
+3. **Логін у ECR** через `aws ecr get-login-password`.
+4. **Push образу** в ECR.
+5. **Деплой у EKS** через Helm:
+   - використовується Helm-чарт з `Project/charts/django-app`
+   - namespace: `default`
+
+Щоб pipeline працював, у Jenkins треба:
+- додати креденшели AWS (Access Key / Secret Key);
+- налаштувати агента з Docker, AWS CLI, kubectl, helm.
+
+### Argo CD (GitOps)
+
+Argo CD розгортається модулем `modules/argo_cd`.
+Він установлює Argo CD в namespace `argocd` і використовує власний Helm-чарт у `modules/argo_cd/charts`, де описані:
+- `Application` ресурси для деплою додатку;
+- `Repository` з посиланням на цей GitHub-репозиторій.
+
+Після розгортання можна перевірити ресурси:
+
+\`\`\`bash
+kubectl get all -n argocd
+\`\`\`
+
+## Моніторинг: Prometheus + Grafana + HPA
+
+### 1. Автомасштабування (HPA)
+
+У Helm-чарті `Project/charts/django-app` є файл `templates/hpa.yaml`, який включає HorizontalPodAutoscaler для Django-подів.
+HPA реагує на навантаження (CPU/Memory) і масштабує репліки Deployment.
+
+Після деплою можна перевірити:
+
+\`\`\`bash
+kubectl get hpa
+\`\`\`
+
+### 2. Встановлення Prometheus + Grafana (kube-prometheus-stack)
+
+Моніторинг-контур можна підняти через Helm-чарт **kube-prometheus-stack**:
+
+\`\`\`bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+helm install monitoring prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace
+\`\`\`
+
+Після встановлення:
+
+\`\`\`bash
+kubectl get all -n monitoring
+\`\`\`
+
+### 3. Доступ до Grafana
+
+\`\`\`bash
+kubectl port-forward svc/grafana 3000:80 -n monitoring
+\`\`\`
+
+Потім відкрийте в браузері: `http://localhost:3000`  
+
+## Порядок роботи з інфраструктурою
+
+### Розгортання
+
+\`\`\`bash
+cd Project
+terraform init
+terraform fmt
+terraform validate
+terraform apply
+\`\`\`
+
+Після успішного `terraform apply`:
+
+\`\`\`bash
+kubectl get all -n jenkins
+kubectl get all -n argocd
+kubectl get all -n monitoring
+\`\`\`
+
+### Видалення
+
+Після перевірки обовʼязково видаліть ресурси, щоб не платити за хмару:
+
+\`\`\`bash
+cd Project
+terraform destroy
+\`\`\`
+
+Зверніть увагу: `terraform destroy` також видаляє S3-бакет і DynamoDB-таблицю бекенду Terraform.  
+Перед наступним розгортанням бекенд потрібно буде налаштувати повторно.

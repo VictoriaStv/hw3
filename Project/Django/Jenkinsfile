@@ -1,0 +1,76 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION       = "us-west-2"
+        AWS_ACCOUNT_ID   = "123456789012"  // TODO: при бажанні підставити свій
+        ECR_REPOSITORY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/django-app"
+        IMAGE_TAG        = "latest"
+        EKS_CLUSTER_NAME = "final-eks-cluster"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker image') {
+            steps {
+                dir('Project/Django') {
+                    sh '''
+                    echo "Building Docker image..."
+                    docker build -t ${ECR_REPOSITORY}:${IMAGE_TAG} .
+                    '''
+                }
+            }
+        }
+
+        stage('Login to ECR') {
+            steps {
+                sh '''
+                echo "Login to Amazon ECR..."
+                aws ecr get-login-password --region ${AWS_REGION} \
+                  | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                '''
+            }
+        }
+
+        stage('Push image to ECR') {
+            steps {
+                sh '''
+                echo "Pushing image to ECR..."
+                docker push ${ECR_REPOSITORY}:${IMAGE_TAG}
+                '''
+            }
+        }
+
+        stage('Deploy to EKS with Helm') {
+            steps {
+                sh '''
+                echo "Update kubeconfig for EKS..."
+                aws eks update-kubeconfig --name ${EKS_CLUSTER_NAME} --region ${AWS_REGION}
+
+                echo "Deploy Django app via Helm..."
+                helm upgrade --install django-app Project/charts/django-app \
+                  --namespace default --create-namespace \
+                  --set image.repository=${ECR_REPOSITORY} \
+                  --set image.tag=${IMAGE_TAG}
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline finished (success or failure)."
+        }
+        success {
+            echo "Deployment completed successfully!"
+        }
+        failure {
+            echo "Pipeline failed. Please check the logs in Jenkins."
+        }
+    }
+}
