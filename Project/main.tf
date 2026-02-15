@@ -129,3 +129,14 @@ module "argo_cd" {
   # те, чого не вистачало: шлях до charts з ArgoCD applications
   apps_chart_path = "${path.module}/modules/argo_cd/charts"
 }
+
+# ------------------------
+# Monitoring (Prometheus + Grafana)
+# ------------------------
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  release_name  = "kube-prometheus-stack"
+  namespace     = "monitoring"
+  chart_version = "65.5.0"
+}

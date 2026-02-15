@@ -232,3 +232,21 @@ terraform destroy
 
 Зверніть увагу: `terraform destroy` також видаляє S3-бакет і DynamoDB-таблицю бекенду Terraform.  
 Перед наступним розгортанням бекенд потрібно буде налаштувати повторно.
+
+## Моніторинг (Prometheus + Grafana)
+
+Моніторингова система розгортається окремим модулем Terraform \`modules/monitoring\`, який встановлює Helm-чарт \`kube-prometheus-stack\` у namespace \`monitoring\`.
+
+Після \`terraform apply\` можна перевірити ресурси:
+
+\`\`\`bash
+kubectl get all -n monitoring
+\`\`\`
+
+Grafana доступна через:
+
+\`\`\`bash
+kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n monitoring
+\`\`\`
+
+Після цього відкрийте в браузері: http://localhost:3000 і перегляньте дашборди з метриками кластера та додатку.
